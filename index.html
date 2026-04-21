@@ -49,7 +49,7 @@
             document.querySelectorAll('.game-container').forEach(g => g.classList.remove('active'));
             document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
             document.getElementById(game).classList.add('active');
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
             currentGame = game;
         }
 
@@ -214,11 +214,12 @@
                 }
             }
             for (let y = 0; y < tetrisRows; y++) {
-                if (tetrisBoard[y].every(cell => cell)) {
+                if (tetrisBoard[y].every(cell => cell !== 0)) {
                     tetrisBoard.splice(y, 1);
                     tetrisBoard.unshift(Array(tetrisCols).fill(0));
                     tetrisScore += 100;
                     document.getElementById('tetrisScore').textContent = tetrisScore;
+                    y--;
                 }
             }
             spawnTetrisPiece();
