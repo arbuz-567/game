@@ -8,8 +8,8 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; min-height: 100vh; }
         nav { background: #16213e; padding: 15px; text-align: center; }
-        nav a { color: #e94560; text-decoration: none; margin: 0 15px; font-size: 18px; padding: 8px 16px; border: 2px solid #e94560; border-radius: 5px; transition: 0.3s; }
-        nav a:hover, nav a.active { background: #e94560; color: #fff; }
+        nav button { color: #e94560; background: transparent; margin: 0 15px; font-size: 18px; padding: 8px 16px; border: 2px solid #e94560; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        nav button:hover, nav button.active { background: #e94560; color: #fff; }
         .game-container { display: none; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
         .game-container.active { display: flex; }
         canvas { border: 3px solid #e94560; background: #0f0f23; }
@@ -19,9 +19,9 @@
 </head>
 <body>
     <nav>
-        <a href="javascript:void(0)" onclick="showGame('snake')">Змейка</a>
-        <a href="javascript:void(0)" onclick="showGame('tetris')">Тетрис</a>
-        <a href="javascript:void(0)" onclick="showGame('arkanoid')">Арканоид</a>
+        <button onclick="showGame('snake')">Змейка</button>
+        <button onclick="showGame('tetris')">Тетрис</button>
+        <button onclick="showGame('arkanoid')">Арканоид</button>
     </nav>
 
     <div id="snake" class="game-container">
@@ -42,18 +42,31 @@
         <div class="instructions">Управление: стрелки влево/вправо. Enter - старт</div>
     </div>
 
-    <script>
+<script>
         let currentGame = 'snake';
+        let snakeInterval, tetrisInterval, arkanoidInterval;
 
         function showGame(game) {
             document.querySelectorAll('.game-container').forEach(g => g.classList.remove('active'));
             document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
             document.getElementById(game).classList.add('active');
-            if (event && event.target) event.target.classList.add('active');
             currentGame = game;
+            event.target.classList.add('active');
         }
 
         showGame('snake');
+
+        document.addEventListener('keydown', function(e) {
+            console.log('Key pressed:', e.key, 'Current game:', currentGame);
+            
+            if (currentGame === 'snake') {
+                handleSnake(e);
+            } else if (currentGame === 'tetris') {
+                handleTetris(e);
+            } else if (currentGame === 'arkanoid') {
+                handleArkanoid(e);
+            }
+        });
 
         // === SNAKE GAME ===
         const snakeCanvas = document.getElementById('snakeCanvas');
@@ -65,14 +78,13 @@
         let snakeFoodX = 15, snakeFoodY = 15;
         let snakeScore = 0;
         let snakeRunning = false;
-        let snakeInterval;
 
         function initSnake() {
             snake = [{x: 10, y: 10}];
             snakeVelX = 0;
             snakeVelY = 0;
             snakeScore = 0;
-            document.getElementById('snakeScore').textContent = 0;
+            document.getElementById('snakeScore').textContent = '0';
             placeFood();
         }
 
@@ -88,20 +100,18 @@
         }
 
         function updateSnake() {
-            if (!snakeRunning) return;
+            if (!snakeRunning) return true;
             const head = {x: snake[0].x + snakeVelX, y: snake[0].y + snakeVelY};
             if (head.x < 0 || head.x >= snakeTileCount || head.y < 0 || head.y >= snakeTileCount) {
-                snakeRunning = false;
-                alert('Игра окончена! Счёт: ' + snakeScore);
+                alert('Game Over! Score: ' + snakeScore);
                 initSnake();
-                return;
+                return false;
             }
             for (let part of snake) {
                 if (head.x === part.x && head.y === part.y) {
-                    snakeRunning = false;
-                    alert('Игра окончена! Счёт: ' + snakeScore);
+                    alert('Game Over! Score: ' + snakeScore);
                     initSnake();
-                    return;
+                    return false;
                 }
             }
             snake.unshift(head);
@@ -112,6 +122,7 @@
             } else {
                 snake.pop();
             }
+            return true;
         }
 
         function drawSnake() {
@@ -121,21 +132,18 @@
             for (let part of snake) {
                 snakeCtx.fillRect(part.x * snakeGrid, part.y * snakeGrid, snakeGrid - 2, snakeGrid - 2);
             }
-            snakeCtx.fillStyle = '#0f0';
+            snakeCtx.fillStyle = '#00ff00';
             snakeCtx.fillRect(snakeFoodX * snakeGrid, snakeFoodY * snakeGrid, snakeGrid - 2, snakeGrid - 2);
         }
 
-        function snakeLoop() {
-            updateSnake();
-            drawSnake();
-        }
-
-        document.addEventListener('keydown', e => {
-            if (currentGame !== 'snake') return;
+        function handleSnake(e) {
             if (e.key === 'Enter') {
                 snakeRunning = !snakeRunning;
-                if (snakeRunning && !snakeInterval) {
-                    snakeInterval = setInterval(snakeLoop, 100);
+                if (snakeRunning) {
+                    if (snakeInterval) clearInterval(snakeInterval);
+                    snakeInterval = setInterval(function() {
+                        if (updateSnake()) drawSnake();
+                    }, 100);
                 }
                 return;
             }
@@ -144,7 +152,7 @@
             if (e.key === 'ArrowRight' && snakeVelX !== -1) { snakeVelX = 1; snakeVelY = 0; }
             if (e.key === 'ArrowUp' && snakeVelY !== 1) { snakeVelX = 0; snakeVelY = -1; }
             if (e.key === 'ArrowDown' && snakeVelY !== -1) { snakeVelX = 0; snakeVelY = 1; }
-        });
+        }
 
         initSnake();
         drawSnake();
@@ -158,7 +166,6 @@
         let tetrisBoard = [];
         let tetrisScore = 0;
         let tetrisRunning = false;
-        let tetrisInterval;
         let tetrisPiece = null;
         let tetrisPieceX = 0, tetrisPieceY = 0;
         const tetrisPieces = [
@@ -175,7 +182,7 @@
         function initTetris() {
             tetrisBoard = Array(tetrisRows).fill().map(() => Array(tetrisCols).fill(0));
             tetrisScore = 0;
-            document.getElementById('tetrisScore').textContent = 0;
+            document.getElementById('tetrisScore').textContent = '0';
             spawnTetrisPiece();
         }
 
@@ -185,13 +192,13 @@
             tetrisPieceX = Math.floor(tetrisCols / 2) - Math.floor(tetrisPiece.shape[0].length / 2);
             tetrisPieceY = 0;
             if (!tetrisMoveValid(0, 0)) {
-                tetrisRunning = false;
-                alert('Игра окончена! Счёт: ' + tetrisScore);
+                alert('Game Over! Score: ' + tetrisScore);
                 initTetris();
             }
         }
 
-        function tetrisMoveValid(dx, dy, piece = tetrisPiece) {
+        function tetrisMoveValid(dx, dy, piece) {
+            piece = piece || tetrisPiece;
             for (let y = 0; y < piece.shape.length; y++) {
                 for (let x = 0; x < piece.shape[y].length; x++) {
                     if (piece.shape[y][x]) {
@@ -226,12 +233,13 @@
         }
 
         function updateTetris() {
-            if (!tetrisRunning) return;
+            if (!tetrisRunning) return true;
             if (tetrisMoveValid(0, 1)) {
                 tetrisPieceY++;
             } else {
                 tetrisLockPiece();
             }
+            return true;
         }
 
         function drawTetris() {
@@ -257,21 +265,18 @@
             }
         }
 
-        function tetrisLoop() {
-            updateTetris();
-            drawTetris();
-        }
-
-        document.addEventListener('keydown', e => {
-            if (currentGame !== 'tetris') return;
+        function handleTetris(e) {
             if (e.key === 'Enter') {
                 tetrisRunning = !tetrisRunning;
-                if (tetrisRunning && !tetrisInterval) {
-                    tetrisInterval = setInterval(tetrisLoop, 500);
+                if (tetrisRunning) {
+                    if (tetrisInterval) clearInterval(tetrisInterval);
+                    tetrisInterval = setInterval(function() {
+                        if (updateTetris()) drawTetris();
+                    }, 500);
                 }
                 return;
             }
-            if (e.key === ' ' || e.key === 'Space') {
+            if (e.key === ' ') {
                 initTetris();
                 tetrisRunning = false;
                 return;
@@ -286,7 +291,8 @@
                 tetrisPiece.shape = rotated;
                 if (!tetrisMoveValid(0, 0)) tetrisPiece.shape = original;
             }
-        });
+            drawTetris();
+        }
 
         initTetris();
         drawTetris();
@@ -302,7 +308,6 @@
         const brickOffsetTop = 30, brickOffsetLeft = 25;
         let arkanoidScore = 0;
         let arkanoidRunning = false;
-        let arkanoidInterval;
         let paddleX = (arkanoidCanvas.width - paddleWidth) / 2;
         let ballX = arkanoidCanvas.width / 2, ballY = arkanoidCanvas.height - 30;
         let ballDX = 3, ballDY = -3;
@@ -317,7 +322,7 @@
                 }
             }
             arkanoidScore = 0;
-            document.getElementById('arkanoidScore').textContent = 0;
+            document.getElementById('arkanoidScore').textContent = '0';
             paddleX = (arkanoidCanvas.width - paddleWidth) / 2;
             ballX = arkanoidCanvas.width / 2;
             ballY = arkanoidCanvas.height - 30;
@@ -353,18 +358,17 @@
         }
 
         function updateArkanoid() {
-            if (!arkanoidRunning) return;
+            if (!arkanoidRunning) return true;
             ballX += ballDX;
             ballY += ballDY;
 
             if (ballX + ballRadius > arkanoidCanvas.width || ballX - ballRadius < 0) ballDX = -ballDX;
             if (ballY - ballRadius < 0) ballDY = -ballDY;
             if (ballY + ballRadius > arkanoidCanvas.height) {
-                arkanoidRunning = false;
-                alert('Игра окончена! Счёт: ' + arkanoidScore);
+                alert('Game Over! Score: ' + arkanoidScore);
                 initArkanoid();
                 drawArkanoid();
-                return;
+                return false;
             }
 
             if (ballY + ballRadius > arkanoidCanvas.height - paddleHeight - 10 &&
@@ -387,26 +391,25 @@
                     }
                 }
             }
+            return true;
         }
 
-        function arkanoidLoop() {
-            updateArkanoid();
-            drawArkanoid();
-        }
-
-        document.addEventListener('keydown', e => {
-            if (currentGame !== 'arkanoid') return;
+        function handleArkanoid(e) {
             if (e.key === 'Enter') {
                 arkanoidRunning = !arkanoidRunning;
-                if (arkanoidRunning && !arkanoidInterval) {
-                    arkanoidInterval = setInterval(arkanoidLoop, 16);
+                if (arkanoidRunning) {
+                    if (arkanoidInterval) clearInterval(arkanoidInterval);
+                    arkanoidInterval = setInterval(function() {
+                        if (updateArkanoid()) drawArkanoid();
+                    }, 16);
                 }
                 return;
             }
             if (!arkanoidRunning) return;
             if (e.key === 'ArrowLeft' && paddleX > 0) paddleX -= 8;
             if (e.key === 'ArrowRight' && paddleX < arkanoidCanvas.width - paddleWidth) paddleX += 8;
-        });
+            drawArkanoid();
+        }
 
         initArkanoid();
         drawArkanoid();
